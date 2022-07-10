@@ -32,10 +32,16 @@ local defaults = {
 	rememberBuffers = true,
 }
 
+-- Saving the last matches in a global variable.
+local saveLastMatches = function(matches)
+	vim.g.other_lastmatches = matches
+end
+
 -- Find the potential other file(s)
 -- Returns a table of matches.
 local findOther = function(filename, context)
 	local matches = {}
+
 	-- iterate over all the mapping to check if the filename matches against any "pattern")
 	for _, mapping in pairs(options.mappings or {}) do
 		local match
@@ -62,6 +68,7 @@ local findOther = function(filename, context)
 			end
 
 			local mappingMatches = vim.fn.glob(result, true, true)
+
 			for _, value in pairs(mappingMatches) do
 
 				-- check wether the file is already added to the result
@@ -78,6 +85,7 @@ local findOther = function(filename, context)
 			end
 		end
 	end
+	saveLastMatches(matches)
 	return matches
 end
 
@@ -122,6 +130,7 @@ local resolveBuiltinMappings = function(mappings)
 	return result
 end
 
+
 M.setOtherFileToBuffer = function(otherFile, bufferHandle)
 	if options.rememberBuffers == true then
 		if otherFile then
@@ -144,7 +153,7 @@ local open = function(context, openCommand)
 	end
 	-- when we had a match before, open that
 	if fileFromBuffer then
-		vim.api.nvim_command(":" .. openCommand .. " " .. fileFromBuffer)
+		util.openFile(openCommand, fileFromBuffer)
 	else
 		local matches = findOther(vim.api.nvim_buf_get_name(0), context or nil)
 		local matchesCount = #matches
@@ -152,7 +161,7 @@ local open = function(context, openCommand)
 			-- when dealing with a single file -> just open it
 			if matchesCount == 1 then
 				M.setOtherFileToBuffer(matches[1].filename, vim.api.nvim_get_current_buf())
-				vim.api.nvim_command(":" .. openCommand .. " " .. matches[1].filename)
+				util.openFile(openCommand, matches[1].filename)
 			else
 				-- otherwise open a window to pick a file
 				window.open_window(matches, M, vim.api.nvim_get_current_buf())
